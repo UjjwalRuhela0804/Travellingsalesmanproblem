@@ -1,0 +1,68 @@
+import numpy as np
+import random
+import math
+import matplotlib.pyplot as plt
+
+
+NUM_CITIES = 500
+coords = np.random.rand(NUM_CITIES, 2) * 1000  # Coordinates in range [0, 1000)
+
+
+def euclidean_distance(a, b):
+    return np.linalg.norm(a - b)
+
+distance_matrix = np.array([[euclidean_distance(coords[i], coords[j]) for j in range(NUM_CITIES)] for i in range(NUM_CITIES)])
+
+
+def total_distance(path):
+    return sum(distance_matrix[path[i % NUM_CITIES]][path[(i + 1) % NUM_CITIES]] for i in range(NUM_CITIES))
+
+
+def simulated_annealing(distance_matrix, initial_temp=10000, cooling_rate=0.9995, stop_temp=1e-8, max_iter=500000):
+    n = len(distance_matrix)
+    current_path = list(range(n))
+    random.shuffle(current_path)
+    best_path = current_path.copy()
+    best_cost = total_distance(best_path)
+    current_cost = best_cost
+    temp = initial_temp
+    iteration = 0
+
+    while temp > stop_temp and iteration < max_iter:
+        i, j = sorted(random.sample(range(n), 2))
+        new_path = current_path[:i] + current_path[i:j+1][::-1] + current_path[j+1:]
+        new_cost = total_distance(new_path)
+
+        if new_cost < current_cost or random.random() < math.exp((current_cost - new_cost) / temp):
+            current_path = new_path
+            current_cost = new_cost
+            if current_cost < best_cost:
+                best_path = current_path
+                best_cost = current_cost
+
+        temp *= cooling_rate
+        iteration += 1
+
+        if iteration % 10000 == 0:
+            print(f"Iter {iteration}, Temp {temp:.5f}, Best Cost {best_cost:.2f}")
+
+    return best_path, best_cost
+
+best_path, best_cost = simulated_annealing(distance_matrix)
+
+
+print(f"\nFinal Best Cost: {best_cost:.2f}")
+
+
+def plot_path(coords, path):
+    plt.figure(figsize=(10, 6))
+    x = [coords[i][0] for i in path + [path[0]]]
+    y = [coords[i][1] for i in path + [path[0]]]
+    plt.plot(x, y, 'o-', markersize=4)
+    plt.title("Best TSP Route (Simulated Annealing)")
+    plt.xlabel("X")
+    plt.ylabel("Y")
+    plt.grid(True)
+    plt.show()
+
+plot_path(coords, best_path)
